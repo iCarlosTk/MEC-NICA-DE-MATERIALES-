@@ -1,0 +1,88 @@
+import math
+
+def calcular_propiedades_l(h, b, t):
+    # División en dos rectángulos: R1 (vertical) y R2 (horizontal base)
+    a1, a2 = h * t, (b - t) * t
+    area_total = a1 + a2
+    # Centroides locales (desde la esquina inferior izquierda h)
+    x1, y1 = t/2, h/2
+    x2, y2 = t + (b - t)/2, t/2
+    # Centroide de la sección
+    cx = (a1 * x1 + a2 * x2) / area_total
+    cy = (a1 * y1 + a2 * y2) / area_total
+    # Momentos de inercia (Teorema de ejes paralelos)
+    ix = (t * h**3 / 12 + a1 * (y1 - cy)**2) + ((b - t) * t**3 / 12 + a2 * (y2 - cy)**2)
+    iy = (h * t**3 / 12 + a1 * (x1 - cx)**2) + (t * (b - t)**3 / 12 + a2 * (x2 - cx)**2)
+    
+    # Coordenadas de los puntos (x, y) relativas al centroide
+    puntos = {
+        'a': (0 - cx, h - cy), 'b': (t - cx, h - cy),
+        'c': (0 - cx, cy - cy), 'd': (t - cx, cy - cy),
+        'e': (t - cx, t - cy), 'f': (cx - cx, t - cy), # f está sobre el eje y
+        'g': (b - cx, t - cy), 'h': (0 - cx, 0 - cy),
+        'i': (cx - cx, 0 - cy), 'j': (b - cx, 0 - cy)
+    }
+    return area_total, ix, iy, puntos
+
+def calcular_propiedades_i(h, b, t):
+    # Simetría total: Centroide en el centro geométrico
+    area_total = (2 * b * t) + (h - 2 * t) * t
+    cx, cy = b/2, h/2
+    # Inercia total
+    ix = (b * h**3 / 12) - ((b - t) * (h - 2 * t)**3 / 12)
+    iy = (2 * (t * b**3 / 12)) + ((h - 2 * t) * t**3 / 12)
+    
+    # Puntos (x, y) relativas al centroide (centro de la I)
+    puntos = {
+        'a': (-b/2, h/2), 'b': (0, h/2), 'c': (b/2, h/2),
+        'd': (-b/2, h/2 - t), 'e': (-t/2, h/2 - t), 'f': (t/2, h/2 - t),
+        'h': (-t/2, 0), 'i': (t/2, 0), 'n': (-b/2, -h/2), 'o': (b/2, -h/2)
+    }
+    return area_total, ix, iy, puntos
+
+def calcular_propiedades_circulo(r_int, t):
+    r_ext = r_int + t
+    area_total = math.pi * (r_ext**2 - r_int**2)
+    ix = iy = (math.pi / 4) * (r_ext**4 - r_int**4)
+    # Puntos cardinales
+    puntos = {
+        'a': (0, r_ext), 'b': (0, r_int), 'c': (-r_ext, 0),
+        'd': (-r_int, 0), 'e': (r_int, 0), 'f': (r_ext, 0),
+        'g': (0, -r_int), 'h': (0, -r_ext)
+    }
+    return area_total, ix, iy, puntos
+
+def main():
+    print("="*50)
+    print("ANALIZADOR DE ESFUERZO NORMAL COMBINADO")
+    print("="*50)
+    
+    caso = input("Seleccione caso (a, b, c): ").lower()
+    p = float(input("Carga axial P [N] (compresión): "))
+    mx = 100.0 # Según tu imagen
+    my = 50.0  # Según tu imagen
+
+    if caso == 'a':
+        h, b, t = 0.30, 0.20, 0.0508 # Valores del problema en metros
+        area, ix, iy, puntos = calcular_propiedades_l(h, b, t)
+    elif caso == 'b':
+        h, b, t = 0.30, 0.20, 0.0508
+        area, ix, iy, puntos = calcular_propiedades_i(h, b, t)
+    elif caso == 'c':
+        r_int, t = 0.15, 0.0508
+        area, ix, iy, puntos = calcular_propiedades_circulo(r_int, t)
+    else:
+        print("Caso no válido"); return
+
+    print(f"\nPROPIEDADES: Area={area:.6f}m², Ix={ix:.6e}m⁴, Iy={iy:.6e}m⁴")
+    print("-" * 45)
+    print(f"{'Punto':<10} | {'Esfuerzo [MPa]':<15}")
+    print("-" * 45)
+
+    for pto, (px, py) in puntos.items():
+        # Fórmula de flexión compuesta: σ = -P/A + (Mx*y)/Ix - (My*x)/Iy
+        sigma = (-p / area) + (mx * py / ix) - (my * px / iy)
+        print(f"Punto {pto:<5} | {sigma/1e6:>10.4f} MPa")
+
+if __name__ == "__main__":
+    main()
